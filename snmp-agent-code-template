@@ -1,0 +1,101 @@
+#!/bin/bash
+
+__escape_oid() {
+	echo ${1//./\\.}
+}
+
+__mib_path_from_dir() {
+	find ${1} -mindepth 1 -maxdepth 1 -type d|paste -sd:
+}
+
+mib2dict() {
+	local usage
+	local mibpath
+	local mibdir
+	local mib
+	local oidroot
+	usage="Usage: ${FUNCNAME} [--mib-path <mibpath>] [--mib-dir <mib-dir>] --mib <mib> --oid-root <oid-root>"
+	while [ ${#} -ne 0 ]; do
+		case "${1}" in
+			--mib-path|-p)              mibpath=${2}; shift;;
+			--mib-dir|-d)               mibdir=${2}; shift;;
+			--mib|-m)                   mib=${2}; shift;;
+			--oid-root|--oid|--root|-r) oidroot=${2}; shift;;
+			*)                          echo "${1}\n${usage}"; exit 1;;
+		esac
+		shift
+	done
+	[   -z "${mib}"     ] && { echo "No MIB.\n${usage}"; exit 1; }
+	[ ! -z "${mibdir}"  ] && [ ! -z "${mibpath}" ] && mibpath=${mibpath}:$(__mib_path_from_dir ${mibdir}):$(dirname ${mib})
+	[   -z "${mibdir}"  ] || mibpath=$(__mib_path_from_dir ${mibdir}):$(dirname ${mib})
+	[   -z "${mibpath}" ] && { echo "None MIB path or directory.\n${usage}"; exit 1; }
+	[   -z "${oidroot}" ] && { echo "No OID root.\n${usage}"; exit 1; }
+	mib=$(basename ${mib} .mib)
+	mib=$(basename ${mib} .txt)
+	oidroot=$(__escape_oid ${oidroot})
+	snmptranslate -M ${mibpath}:. -m ${mib} -Tot -OS | awk '/^'${oidroot}'\./ {getline n; sub(/^\s*/,"",n);sub(/\(.+/,"",n); print n" "$0}'
+}
+
+mib2perl() {
+	local mibpath
+	local mibdir
+	local mib
+	local oidroot
+	local module
+	local submodule
+	local decl
+	local implementations
+	local usage
+	local mibdict
+	usage="Usage: ${FUNCNAME} [--mib-path <mibpath>] [--mib-dir <mib-dir>] --mib <mib> --oid-root <oid-root> [--module <my::module>] [--filter <filter>] <module-list>
+Example: ${FUNCNAME} --mib-dir path/to/mibs --mib MYMIB.mib --oid-root .1.1.1.1.1.1.1.1 --filter nodename --module my::module implementation_1 implementation_2"
+	while [ ${#} -ne 0 ]; do
+		case "${1}" in
+			--mib-path|-p)              mibpath="--mib-path ${2}"; shift;;
+			--mib-dir|-d)               mibdir="--mib-dir ${2}"; shift;;
+			--mib|-m)                   mib="--mib ${2}"; shift;;
+			--oid-root|--oid|--root|-r) oidroot="${2}"; shift;;
+			--module|-m)                module=${2}; shift;;
+			--filter|-f)                filter=${2}; shift;;
+			--help|-h)                  echo "${usage}" >&2; exit 0;;
+			-*)                         echo "${usage}" >&2; exit 1;;
+			--)                         ;;
+			*)                          [ -z "${module}" ] && echo "${usage}" || implementations=${*}; break;;
+		esac
+		shift
+	done
+	[ -z "${oidroot}" ]  && oidroot=${SENSOR_OID}
+	mibdict=$(mib2dict ${mibpath} ${mibdir} ${mib} --oid-root ${oidroot}|grep "${filter}")
+
+	if [ -z "${module}" ]; then
+		decl=my
+	else
+		decl=our
+		submodule=${module/*::/}
+		echo "package ${module};"
+		echo 'use strict;'
+		echo
+		echo 'require Exporter;'
+		echo 'use aeten::modules qw(import_lazy);'
+		echo
+		echo 'our @ISA = qw(Exporter);'
+		echo 'our @EXPORT = qw(%'${submodule}impl
+		echo "${mibdict}" | awk '{print "\t$"$1}'
+		echo ');'
+		echo
+		echo -n "our %${submodule}impl = aeten::modules::import_lazy(__PACKAGE__, "
+		echo "'${implementations// /\', \'}');"
+		echo
+	fi
+	
+	echo "my \$oidroot='${oidroot}';"
+	echo
+	echo "${mibdict}" | awk '{sub("'${oidroot}'","$oidroot"); print "'${decl}' $"$1"=""\""$2"\";"; }'
+}
+
+case "${1}" in
+	--help|-h) echo "${0} [mib2dict|mib2perl] --help" >&2; exit 0;;
+esac
+command=${1}
+shift
+${command} ${*}

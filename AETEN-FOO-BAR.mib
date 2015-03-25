@@ -1,0 +1,169 @@
+AETEN-FOO-BAR DEFINITIONS ::= BEGIN
+
+--
+-- Æten foo bar MIB
+--
+
+
+IMPORTS
+	MODULE-IDENTITY, OBJECT-TYPE, enterprises FROM SNMPv2-SMI
+;
+
+aeten MODULE-IDENTITY
+	LAST-UPDATED "201503242220Z" -- 1.0
+	ORGANIZATION "Æten"
+	CONTACT-INFO
+	"Thomas Pérennou <thomas.perennou@aeten.net>"
+	DESCRIPTION
+	"Æten Foo Bar MIB"
+	REVISION "201503242220Z" -- 1.0
+	DESCRIPTION
+	"Draft"
+	::= { enterprises 4310 }
+
+-------------------------------------------------------------------
+-- top level structure
+-------------------------------------------------------------------
+
+foobar		OBJECT IDENTIFIER ::= { aeten 1 }
+foo			OBJECT IDENTIFIER ::= { foobar 1 }
+bar			OBJECT IDENTIFIER ::= { foobar 2 }
+
+-------------------------------------------------------------------
+-- Commons types
+-------------------------------------------------------------------
+
+Test ::= INTEGER {
+	avoid(0),
+	success(1),
+	warning(2),
+	error(3),
+	fatal(4),
+	missing(5)
+}
+
+Connection ::= INTEGER {
+	connected(0),
+	disconnected(0)
+}
+
+-------------------------------------------------------------------
+-- Foo Structure
+-------------------------------------------------------------------
+FooEntry ::= SEQUENCE {
+	fooIndex      INTEGER,
+	fooType       OCTET STRING,
+	fooName       OCTET STRING,
+	fooState      Test
+}
+
+fooTable OBJECT-TYPE
+	SYNTAX      SEQUENCE OF FooEntry
+	MAX-ACCESS  not-accessible
+	STATUS      current
+	DESCRIPTION
+	"Foo components."
+	::= { foo 1 }
+
+fooEntry OBJECT-TYPE
+	SYNTAX      FooEntry
+	MAX-ACCESS  not-accessible
+	STATUS      current
+	DESCRIPTION
+	"Foo entry."
+	INDEX       { fooIndex }
+	::= { fooTable 1 }
+
+fooIndex OBJECT-TYPE
+	SYNTAX	INTEGER (0..255)
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	"Index of a foo entry."
+	::= { fooEntry 1 }
+
+fooType OBJECT-TYPE
+	SYNTAX      OCTET STRING (SIZE(1..32))
+	MAX-ACCESS  read-write
+	STATUS      current
+	DESCRIPTION
+	"Type of a foo entry."
+	::= { fooEntry 2 }
+
+fooName OBJECT-TYPE
+	SYNTAX      OCTET STRING (SIZE(1..32))
+	MAX-ACCESS  read-write
+	STATUS      current
+	DESCRIPTION
+	"Name of a foo entry."
+	::= { fooEntry 3 }
+
+fooState OBJECT-TYPE
+	SYNTAX	Test
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	"State of a foo entry."
+	::= { fooEntry 4 }
+
+
+-------------------------------------------------------------------
+-- Bar Structure
+-------------------------------------------------------------------
+BarEntry ::= SEQUENCE {
+	barIndex      INTEGER,
+	barType       OCTET STRING,
+	barName       OCTET STRING,
+	barConnection Connection
+}
+
+barTable OBJECT-TYPE
+	SYNTAX      SEQUENCE OF FooEntry
+	MAX-ACCESS  not-accessible
+	STATUS      current
+	DESCRIPTION
+	"Bar table components."
+	::= { bar 1 }
+
+barEntry OBJECT-TYPE
+	SYNTAX      BarEntry
+	MAX-ACCESS  not-accessible
+	STATUS      current
+	DESCRIPTION
+	"Bar entry component."
+	INDEX       { barIndex }
+	::= { barTable 1 }
+
+barIndex OBJECT-TYPE
+	SYNTAX	INTEGER (0..255)
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	"Index of a bar entry."
+	::= { barEntry 1 }
+
+barType OBJECT-TYPE
+	SYNTAX      OCTET STRING (SIZE(1..32))
+	MAX-ACCESS  read-write
+	STATUS      current
+	DESCRIPTION
+	"Type of a bar entry."
+	::= { barEntry 2 }
+
+barName OBJECT-TYPE
+	SYNTAX      OCTET STRING (SIZE(1..32))
+	MAX-ACCESS  read-write
+	STATUS      current
+	DESCRIPTION
+	"Name of a bar entry."
+	::= { barEntry 3 }
+
+barConnection OBJECT-TYPE
+	SYNTAX	Connection
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	"Connection state of a bar entry."
+	::= { barEntry 4 }
+
+END
