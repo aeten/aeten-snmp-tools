@@ -79,12 +79,12 @@ Example: ${FUNCNAME} --mib-dir path/to/mibs --mib MYMIB.mib --oid-root .1.1.1.1.
 		echo 'use aeten::modules qw(import_lazy);'
 		echo
 		echo 'our @ISA = qw(Exporter);'
-		echo 'our @EXPORT = qw(%'${submodule}impl
+		echo 'our @EXPORT = qw(%'${submodule}
 		echo "${mibdict}" | awk '{print "\t$"$1}'
 		echo ');'
 		echo
-		echo -n "our %${submodule}impl = aeten::modules::import_lazy(__PACKAGE__, "
-		echo "'${implementations// /\', \'}');"
+		echo -n "our %${submodule} = aeten::modules::import_lazy(__PACKAGE__, "
+		echo "'"${implementations// /\', \'}"');"
 		echo
 	fi
 	
