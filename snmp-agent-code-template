@@ -8,6 +8,10 @@ __mib_path_from_dir() {
 	find ${1} -mindepth 1 -maxdepth 1 -type d|paste -sd:
 }
 
+__filter() {
+	which ${1} >& /dev/null && echo ${@} || echo grep "${@}"
+}
+
 mib2dict() {
 	local usage
 	local mibpath
@@ -43,12 +47,15 @@ mib2perl() {
 	local oidroot
 	local module
 	local submodule
+	local filter
 	local decl
 	local implementations
 	local usage
 	local mibdict
 	usage="Usage: ${FUNCNAME} [--mib-path <mibpath>] [--mib-dir <mib-dir>] --mib <mib> --oid-root <oid-root> [--module <my::module>] [--filter <filter>] <module-list>
 Example: ${FUNCNAME} --mib-dir path/to/mibs --mib MYMIB.mib --oid-root .1.1.1.1.1.1.1.1 --filter nodename --module my::module implementation_1 implementation_2"
+	args=$(getopt -l "mib-path: mib-dir: mib: oid-root: oid: root: module: filter: help" -o "p:d:m:r:m:f:h" -- "$@")
+	eval set -- "$args"
 	while [ ${#} -ne 0 ]; do
 		case "${1}" in
 			--mib-path|-p)              mibpath="--mib-path ${2}"; shift;;
@@ -56,16 +63,16 @@ Example: ${FUNCNAME} --mib-dir path/to/mibs --mib MYMIB.mib --oid-root .1.1.1.1.
 			--mib|-m)                   mib="--mib ${2}"; shift;;
 			--oid-root|--oid|--root|-r) oidroot="${2}"; shift;;
 			--module|-m)                module=${2}; shift;;
-			--filter|-f)                filter=${2}; shift;;
+			--filter|-f)                filter=$(__filter ${2}); shift;;
 			--help|-h)                  echo "${usage}" >&2; exit 0;;
-			-*)                         echo "${usage}" >&2; exit 1;;
 			--)                         ;;
+			-*)                         echo "$*\n${usage}" >&2; exit 1;;
 			*)                          [ -z "${module}" ] && echo "${usage}" || implementations=${*}; break;;
 		esac
 		shift
 	done
 	[ -z "${oidroot}" ]  && oidroot=${SENSOR_OID}
-	mibdict=$(mib2dict ${mibpath} ${mibdir} ${mib} --oid-root ${oidroot}|grep "${filter}")
+	mibdict=$(mib2dict ${mibpath} ${mibdir} ${mib} --oid-root ${oidroot}|eval "${filter}")
 
 	if [ -z "${module}" ]; then
 		decl=my
@@ -98,4 +105,4 @@ case "${1}" in
 esac
 command=${1}
 shift
-${command} ${*}
+${command} "${@}"
